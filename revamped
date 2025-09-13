@@ -1,0 +1,527 @@
+local player = game.Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
+
+-- Remove old GUI (optional)
+local existingGui = playerGui:FindFirstChild("CompactMenu")
+if existingGui then
+	existingGui:Destroy()
+end
+
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "CompactMenu"
+screenGui.ResetOnSpawn = false
+screenGui.Parent = playerGui
+
+local UserInputService = game:GetService("UserInputService")
+
+-- Variáveis para controle global do drag
+local dragging = false
+local dragInput = nil
+local dragFrame = nil
+local dragStartPos = nil
+local dragStartMousePos = nil
+
+local function BringToFront(frame)
+	frame.Parent = nil
+	frame.Parent = screenGui
+end
+
+local function StartDrag(frame, input)
+	if dragging then return end
+	dragging = true
+	dragFrame = frame
+	dragInput = input
+	dragStartPos = frame.Position
+	dragStartMousePos = input.Position
+	BringToFront(frame)
+
+	input.Changed:Connect(function()
+		if input.UserInputState == Enum.UserInputState.End then
+			dragging = false
+			dragFrame = nil
+			dragInput = nil
+		end
+	end)
+end
+
+UserInputService.InputChanged:Connect(function(input)
+	if input == dragInput and dragging and dragFrame then
+		local delta = input.Position - dragStartMousePos
+		local newPos = UDim2.new(
+			dragStartPos.X.Scale,
+			dragStartPos.X.Offset + delta.X,
+			dragStartPos.Y.Scale,
+			dragStartPos.Y.Offset + delta.Y
+		)
+		dragFrame.Position = newPos
+	end
+end)
+
+-- Suporte extra para movimento em celular: TouchMoved
+UserInputService.TouchMoved:Connect(function(touch, gameProcessed)
+	if dragging and dragInput and dragInput.UserInputType == Enum.UserInputType.Touch then
+		if touch == dragInput then
+			local delta = touch.Position - dragStartMousePos
+			local newPos = UDim2.new(
+				dragStartPos.X.Scale,
+				dragStartPos.X.Offset + delta.X,
+				dragStartPos.Y.Scale,
+				dragStartPos.Y.Offset + delta.Y
+			)
+			if dragFrame then
+				dragFrame.Position = newPos
+			end
+		end
+	end
+end)
+
+local function CreateWindow(titleText, pos)
+	local frame = Instance.new("Frame")
+	frame.Size = UDim2.new(0, 160, 0, 220)
+	frame.Position = pos or UDim2.new(0.5, -100, 0, 10)
+	frame.BackgroundColor3 = Color3.fromRGB(18, 18, 18)
+	frame.BorderSizePixel = 0
+	frame.Parent = screenGui
+	Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 6)
+
+	local shadow = Instance.new("ImageLabel")
+	shadow.Name = "Shadow"
+	shadow.Image = "rbxassetid://1316045217"
+	shadow.Size = UDim2.new(1, 30, 1, 30)
+	shadow.Position = UDim2.new(0, -15, 0, -15)
+	shadow.BackgroundTransparency = 1
+	shadow.ImageTransparency = 0.5
+	shadow.ZIndex = 0
+	shadow.Parent = frame
+
+	local title = Instance.new("TextLabel")
+	title.Size = UDim2.new(1, -40, 0, 26)
+	title.Position = UDim2.new(0, 10, 0, 8)
+	title.Text = titleText or "Window"
+	title.Font = Enum.Font.GothamMedium
+	title.TextSize = 12
+	title.TextColor3 = Color3.fromRGB(255, 255, 255)
+	title.BackgroundTransparency = 1
+	title.TextXAlignment = Enum.TextXAlignment.Left
+	title.ZIndex = 2
+	title.Parent = frame
+
+	local minimizeBtn = Instance.new("TextButton")
+	minimizeBtn.Size = UDim2.new(0, 18, 0, 18)
+	minimizeBtn.Position = UDim2.new(1, -30, 0, 10)
+	minimizeBtn.BackgroundColor3 = Color3.fromRGB(18, 18, 18)
+	minimizeBtn.Text = "-"
+	minimizeBtn.Font = Enum.Font.GothamBold
+	minimizeBtn.TextSize = 12
+	minimizeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+	minimizeBtn.ZIndex = 3
+	minimizeBtn.AutoButtonColor = true
+	minimizeBtn.Parent = frame
+	Instance.new("UICorner", minimizeBtn).CornerRadius = UDim.new(1, 0)
+
+	local creditBtn = Instance.new("TextButton")
+	creditBtn.Name = "CreditBtn"
+	creditBtn.Size = UDim2.new(1, -20, 0, 20)
+	creditBtn.Position = UDim2.new(0, 10, 1, -25)
+	creditBtn.Text = "YT: @TGMANKASKE"
+	creditBtn.Font = Enum.Font.GothamMedium
+	creditBtn.TextSize = 13
+	creditBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+	creditBtn.BackgroundTransparency = 1
+	creditBtn.TextXAlignment = Enum.TextXAlignment.Left
+	creditBtn.ZIndex = 2
+	creditBtn.AutoButtonColor = true
+	creditBtn.Parent = frame
+
+	creditBtn.MouseButton1Click:Connect(function()
+		if setclipboard then
+			setclipboard("https://youtube.com/@TGMANKASKE")
+		end
+	end)
+
+	local elements = {}
+
+	local function updateFrameSize()
+		local spacing = 10
+		local currentY = 45
+		for _, el in ipairs(elements) do
+			if el:IsA("GuiObject") and el.Visible then
+				el.Position = UDim2.new(0, 10, 0, currentY)
+				currentY += el.Size.Y.Offset + spacing
+			end
+		end
+		frame.Size = UDim2.new(0, 160, 0, currentY + 40)
+	end
+
+	local function CreateTextbox(placeholder, callback)
+		local tb = Instance.new("TextBox")
+		tb.PlaceholderText = placeholder or ""
+		tb.Size = UDim2.new(1, -20, 0, 24)
+		tb.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+		tb.TextColor3 = Color3.fromRGB(255, 255, 255)
+		tb.Text = ""
+		tb.ClearTextOnFocus = false
+		tb.Font = Enum.Font.Gotham
+		tb.TextSize = 12
+		tb.ZIndex = 2
+		tb.Parent = frame
+		Instance.new("UICorner", tb).CornerRadius = UDim.new(0, 6)
+
+		tb.FocusLost:Connect(function(enterPressed)
+			if enterPressed and callback then
+				callback(tb.Text)
+			end
+		end)
+
+		table.insert(elements, tb)
+		updateFrameSize()
+		return tb
+	end
+
+	local function CreateToggle(text, callback, waitTime)
+		waitTime = waitTime or 0.1
+		local btn = Instance.new("TextButton")
+		btn.Text = "[ ] " .. (text or "Toggle")
+		btn.Size = UDim2.new(1, -20, 0, 24)
+		btn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+		btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+		btn.Font = Enum.Font.Gotham
+		btn.TextSize = 12
+		btn.ZIndex = 2
+		btn.AutoButtonColor = true
+		btn.Parent = frame
+		Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
+
+		local state = false
+		local running = false
+		local thread
+
+		btn.MouseButton1Click:Connect(function()
+			state = not state
+			btn.Text = (state and "[✔]" or "[ ]") .. " " .. text
+
+			if state then
+				running = true
+				thread = coroutine.create(function()
+					while running do
+						if callback then callback(state) end
+						task.wait(waitTime)
+					end
+				end)
+				coroutine.resume(thread)
+			else
+				running = false
+			end
+		end)
+
+		table.insert(elements, btn)
+		updateFrameSize()
+		return btn
+	end
+
+	local function CreateButton(text, callback)
+		local btn = Instance.new("TextButton")
+		btn.Text = text or "Button"
+		btn.Size = UDim2.new(1, -20, 0, 26)
+		btn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+		btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+		btn.Font = Enum.Font.Gotham
+		btn.TextSize = 12
+		btn.AutoButtonColor = false
+		btn.ZIndex = 2
+		btn.Parent = frame
+		Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
+
+		btn.MouseEnter:Connect(function()
+			btn.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
+		end)
+		btn.MouseLeave:Connect(function()
+			btn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+		end)
+		btn.MouseButton1Down:Connect(function()
+			btn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+		end)
+		btn.MouseButton1Up:Connect(function()
+			btn.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
+		end)
+		btn.MouseButton1Click:Connect(function()
+			if callback then callback() end
+		end)
+
+		table.insert(elements, btn)
+		updateFrameSize()
+		return btn
+	end
+
+	minimizeBtn.MouseButton1Click:Connect(function()
+		local minimized = frame.Size.Y.Offset > 50
+
+		if minimized then
+			for _, el in ipairs(elements) do
+				if el ~= minimizeBtn and el ~= title and el ~= creditBtn then
+					el.Visible = false
+				end
+			end
+			creditBtn.Visible = true
+			title.Visible = true
+			minimizeBtn.Visible = true
+			frame.Size = UDim2.new(0, 200, 0, 50)
+		else
+			for _, el in ipairs(elements) do
+				el.Visible = true
+			end
+			creditBtn.Visible = true
+			title.Visible = true
+			minimizeBtn.Visible = true
+			updateFrameSize()
+		end
+	end)
+
+	-- Setup drag input on title (PC + Touch)
+	title.InputBegan:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+			StartDrag(frame, input)
+		end
+	end)
+
+	title.InputChanged:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseMovement then
+			dragInput = input
+		end
+	end)
+
+	return {
+		Frame = frame,
+		CreateTextbox = CreateTextbox,
+		CreateToggle = CreateToggle,
+		CreateButton = CreateButton,
+		UpdateSize = updateFrameSize,
+		Elements = elements
+	}
+end
+
+-- Store created windows
+local windows = {}
+
+local function CreateNewWindow(title)
+	local baseXOffset = 10
+	local spacing = 7
+	local windowWidth = 200
+	local count = #windows
+
+	local posX = baseXOffset + (windowWidth + spacing) * count
+	local newWindow = CreateWindow(title, UDim2.new(0, posX, 0, 10))
+	table.insert(windows, newWindow)
+	return newWindow
+end
+
+local win1 = CreateNewWindow("Lol")
+
+win1.CreateButton("Delete Lasers", function()
+	print("I Love KontrollAll <3")
+
+local function deleteLasersFolder()
+    local lasersFolder = workspace.Map.Bases.Base_1:FindFirstChild("Lasers")
+    
+    if lasersFolder then
+        lasersFolder:Destroy()
+        print("A pasta 'Lasers' foi deletada.")
+    else
+        warn("Pasta 'Lasers' não encontrada em Base_6!")
+    end
+end
+
+deleteLasersFolder()
+
+local function deleteLasersFolder()
+    local lasersFolder = workspace.Map.Bases.Base_2:FindFirstChild("Lasers")
+    
+    if lasersFolder then
+        lasersFolder:Destroy()
+        print("A pasta 'Lasers' foi deletada.")
+    else
+        warn("Pasta 'Lasers' não encontrada em Base_6!")
+    end
+end
+
+deleteLasersFolder()
+
+local function deleteLasersFolder()
+    local lasersFolder = workspace.Map.Bases.Base_3:FindFirstChild("Lasers")
+    
+    if lasersFolder then
+        lasersFolder:Destroy()
+        print("A pasta 'Lasers' foi deletada.")
+    else
+        warn("Pasta 'Lasers' não encontrada em Base_6!")
+    end
+end
+
+deleteLasersFolder()
+
+
+local function deleteLasersFolder()
+    local lasersFolder = workspace.Map.Bases.Base_4:FindFirstChild("Lasers")
+    
+    if lasersFolder then
+        lasersFolder:Destroy()
+        print("A pasta 'Lasers' foi deletada.")
+    else
+        warn("Pasta 'Lasers' não encontrada em Base_6!")
+    end
+end
+
+deleteLasersFolder()
+
+local function deleteLasersFolder()
+    local lasersFolder = workspace.Map.Bases.Base_5:FindFirstChild("Lasers")
+    
+    if lasersFolder then
+        lasersFolder:Destroy()
+        print("A pasta 'Lasers' foi deletada.")
+    else
+        warn("Pasta 'Lasers' não encontrada em Base_6!")
+    end
+end
+
+deleteLasersFolder()
+
+local function deleteLasersFolder()
+    local lasersFolder = workspace.Map.Bases.Base_6:FindFirstChild("Lasers")
+    
+    if lasersFolder then
+        lasersFolder:Destroy()
+        print("A pasta 'Lasers' foi deletada.")
+    else
+        warn("Pasta 'Lasers' não encontrada em Base_6!")
+    end
+end
+
+deleteLasersFolder()
+
+local function deleteLasersFolder()
+    local lasersFolder = workspace.Map.Bases.Base_7:FindFirstChild("Lasers")
+    
+    if lasersFolder then
+        lasersFolder:Destroy()
+        print("A pasta 'Lasers' foi deletada.")
+    else
+        warn("Pasta 'Lasers' não encontrada em Base_6!")
+    end
+end
+
+deleteLasersFolder()
+
+local function deleteLasersFolder()
+    local lasersFolder = workspace.Map.Bases.Base_8:FindFirstChild("Lasers")
+    
+    if lasersFolder then
+        lasersFolder:Destroy()
+        print("A pasta 'Lasers' foi deletada.")
+    else
+        warn("Pasta 'Lasers' não encontrada em Base_6!")
+    end
+end
+
+deleteLasersFolder()
+
+end)
+
+local copiedPosition = nil
+
+win1.CreateButton("Copy Pos ( Desposit )", function()
+  print('I love KontrollAll <3')
+
+    local player = game.Players.LocalPlayer
+    local character = player.Character
+    if character and character:FindFirstChild("HumanoidRootPart") then
+        copiedPosition = character.HumanoidRootPart.Position
+        -- Opcional: copiar para a área de transferência (clipboard) se for possível
+        print("Posição copiada:", copiedPosition)
+        -- Para Roblox, copiar para clipboard pode não ser permitido, então printar já ajuda.
+    else
+        warn("Personagem ou HumanoidRootPart não encontrado!")
+    end
+end)
+
+win1.CreateButton("Goto Position", function()
+  print('I love KontrollAll <3')
+
+    local player = game.Players.LocalPlayer
+    local character = player.Character
+    if copiedPosition and character and character:FindFirstChild("HumanoidRootPart") then
+        character.HumanoidRootPart.CFrame = CFrame.new(copiedPosition)
+        print("Teleportado para a posição:", copiedPosition)
+    else
+        warn("Posição não copiada ainda ou personagem não encontrado!")
+    end
+
+end)
+
+win1.CreateButton("Speed ( 70 )", function()
+    print("lol")
+
+-- CONFIGURAÇÃO
+local desiredSpeed = 50 -- velocidade desejada
+
+-- SERVIÇOS
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local LocalPlayer = Players.LocalPlayer
+
+-- Função para aplicar a velocidade
+local function applySpeed(speed)
+	local character = LocalPlayer.Character
+	if not character then return end
+	
+	local humanoid = character:FindFirstChildOfClass("Humanoid")
+	if humanoid then
+		humanoid.WalkSpeed = speed
+	end
+end
+
+-- Aplica velocidade na hora
+applySpeed(desiredSpeed)
+
+-- Reaplica sempre que o personagem for adicionado (respawn)
+LocalPlayer.CharacterAdded:Connect(function(char)
+	char:WaitForChild("Humanoid")
+	applySpeed(desiredSpeed)
+end)
+
+-- Monitora e corrige caso a velocidade seja resetada
+RunService.RenderStepped:Connect(function()
+	local character = LocalPlayer.Character
+	if not character then return end
+	
+	local humanoid = character:FindFirstChildOfClass("Humanoid")
+	if humanoid and humanoid.WalkSpeed ~= desiredSpeed then
+		humanoid.WalkSpeed = desiredSpeed
+	end
+end)
+
+end)
+
+
+local win2 = CreateNewWindow("My TEAM")
+
+win3.CreateButton("KontrollAll", function()
+   print("i love the kontrollall <3")
+
+			setclipboard("youtube.com/@pl3h")
+
+end)
+
+win2.CreateButton("TGMANKASKE", function()
+   print("i love the kontrollall <3")
+
+			setclipboard("youtube.com/@TGMANKASKE")
+
+end)
+
+win2.CreateButton("Discord Here", function()
+   print("i love the kontrollall <3")
+
+			setclipboard("https://discord.gg/esYJzYnsfC")
+
+end)
